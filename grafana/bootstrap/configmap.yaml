@@ -110,7 +110,7 @@ data:
     echo
     echo "Users created."
 
-   team-members.sh: |
+  team-members.sh: |
     #!/bin/sh
 
     set -e
