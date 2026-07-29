@@ -2,22 +2,28 @@
 
 set -e
 
-echo "====================================="
-echo " Grafana Bootstrap Started"
-echo "====================================="
+GRAFANA_URL=http://grafana.observability.svc.cluster.local
 
 echo "Waiting for Grafana..."
 
-until curl -s http://grafana.observability.svc.cluster.local/api/health >/dev/null
+until curl -s $GRAFANA_URL/api/health >/dev/null
 do
     echo "Grafana not ready..."
     sleep 5
 done
 
-echo "Grafana is reachable."
+echo "Grafana is ready."
 
-echo "Health response:"
-curl -s http://grafana.observability.svc.cluster.local/api/health
+echo "Creating Developers Team..."
+
+curl \
+  -X POST \
+  -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name":"developers"
+      }' \
+  $GRAFANA_URL/api/teams
 
 echo
-echo "Bootstrap completed successfully."
+echo "Bootstrap completed."
