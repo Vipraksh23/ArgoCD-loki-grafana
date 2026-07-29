@@ -11,13 +11,17 @@ TEAM_VIEW=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=viewers | jq -r '.t
 add_member () {
 
 TEAM=$1
-USER=$2
+LOGIN=$2
+
+USER_ID=$(curl -s $AUTH \
+$GRAFANA_URL/api/users/lookup?loginOrEmail=$LOGIN \
+| jq -r '.id')
 
 curl -s \
 -X POST \
 $AUTH \
 -H "Content-Type: application/json" \
--d "{\"loginOrEmail\":\"$USER\"}" \
+-d "{\"userId\":$USER_ID}" \
 $GRAFANA_URL/api/teams/$TEAM/members || true
 
 }
