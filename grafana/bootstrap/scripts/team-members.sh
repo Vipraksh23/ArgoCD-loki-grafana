@@ -34,5 +34,7 @@ add_member $TEAM_OPS ops2
 
 add_member $TEAM_VIEW viewer1
 
+add_member $TEAM_VIEW Danish
+
 echo
 echo "Members added."
