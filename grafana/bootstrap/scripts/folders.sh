@@ -4,28 +4,24 @@ set -e
 
 AUTH="-u ${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
 
-create_folder () {
+create_folder() {
 
-NAME=$1
-
-EXISTS=$(curl -s \
-$AUTH \
+EXISTS=$(curl -s $AUTH \
 $GRAFANA_URL/api/folders \
-| jq -r ".[] | select(.title==\"$NAME\") | .uid" \
-| head -n1)
+| jq -r ".[] | select(.title==\"$1\") | .uid")
 
 if [ -z "$EXISTS" ]; then
 
-curl -s \
--X POST \
-$AUTH \
--H "Content-Type: application/json" \
--d "{\"title\":\"$NAME\"}" \
-$GRAFANA_URL/api/folders
+    curl -s \
+    -X POST \
+    $AUTH \
+    -H "Content-Type: application/json" \
+    -d "{\"title\":\"$1\"}" \
+    $GRAFANA_URL/api/folders
 
 else
 
-echo "$NAME folder already exists."
+    echo "$1 already exists."
 
 fi
 
