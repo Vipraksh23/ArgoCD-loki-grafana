@@ -110,7 +110,7 @@ data:
     echo
     echo "Users created."
 
-  team-members.sh: |
+   team-members.sh: |
     #!/bin/sh
 
     set -e
@@ -130,14 +130,21 @@ data:
         "$GRAFANA_URL/api/users/lookup?loginOrEmail=$LOGIN" \
         | jq -r '.id')
 
+      if [ -z "$USER_ID" ] || [ "$USER_ID" = "null" ]; then
+        echo "User '$LOGIN' not found."
+        return
+      fi
+
       echo "Adding user $LOGIN (id=$USER_ID) to team $TEAM"
 
       curl -s \
         -X POST \
         $AUTH \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        --data-urlencode "userId=$USER_ID" \
+        -H "Content-Type: application/json" \
+        -d "{\"userId\":$USER_ID}" \
         "$GRAFANA_URL/api/teams/$TEAM/members" || true
+
+      echo
     }
 
     add_member $TEAM_DEV dev1
