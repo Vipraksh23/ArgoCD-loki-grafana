@@ -522,7 +522,7 @@ loki:
   schemaConfig: {}
   # -- a real Loki install requires a proper schemaConfig defined above this, however for testing or playing around
   # you can enable useTestSchema
-  useTestSchema: false
+  useTestSchema: true
   testSchemaConfig:
     configs:
       - from: 2024-04-01
