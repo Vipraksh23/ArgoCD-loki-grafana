@@ -13,11 +13,16 @@ spec:
       containers:
         - name: bootstrap
 
-          image: curlimages/curl:8.8.0
+          image: alpine:3.20
 
           command:
             - /bin/sh
-            - /scripts/bootstrap.sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache curl jq
+              chmod +x /scripts/*.sh
+              /scripts/bootstrap.sh
 
           envFrom:
             - secretRef:

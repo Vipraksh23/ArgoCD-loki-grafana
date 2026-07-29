@@ -4,6 +4,8 @@ set -e
 
 GRAFANA_URL=http://grafana.observability.svc.cluster.local
 
+export GRAFANA_URL
+
 echo "Waiting for Grafana..."
 
 until curl -s $GRAFANA_URL/api/health >/dev/null
@@ -14,16 +16,25 @@ done
 
 echo "Grafana is ready."
 
-echo "Creating Developers Team..."
+echo "==============================="
+echo "Creating Teams..."
+sh /scripts/teams.sh
 
-curl \
-  -X POST \
-  -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "name":"developers"
-      }' \
-  $GRAFANA_URL/api/teams
+echo "==============================="
+echo "Creating Users..."
+sh /scripts/users.sh
+
+echo "==============================="
+echo "Adding Users To Teams..."
+sh /scripts/team-members.sh
+
+echo "==============================="
+echo "Creating Folders..."
+sh /scripts/folders.sh
+
+echo "==============================="
+echo "Applying Permissions..."
+sh /scripts/permissions.sh
 
 echo
 echo "Bootstrap completed."

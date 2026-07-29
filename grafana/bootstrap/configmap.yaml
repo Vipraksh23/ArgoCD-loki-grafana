@@ -6,33 +6,21 @@ metadata:
   namespace: observability
 
 data:
+
   bootstrap.sh: |
-    #!/bin/sh
+    <contents of bootstrap.sh>
 
-    set -e
+  teams.sh: |
+    <contents of teams.sh>
 
-    GRAFANA_URL=http://grafana.observability.svc.cluster.local
+  users.sh: |
+    <contents of users.sh>
 
-    echo "Waiting for Grafana..."
+  team-members.sh: |
+    <contents of team-members.sh>
 
-    until curl -s $GRAFANA_URL/api/health >/dev/null
-    do
-      echo "Grafana not ready..."
-      sleep 5
-    done
+  folders.sh: |
+    <contents of folders.sh>
 
-    echo "Grafana is ready."
-
-    echo "Creating Developers Team..."
-
-    curl \
-      -X POST \
-      -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
-      -H "Content-Type: application/json" \
-      -d '{
-            "name":"developers"
-          }' \
-      $GRAFANA_URL/api/teams
-
-    echo
-    echo "Bootstrap completed."
+  permissions.sh: |
+    <contents of permissions.sh>
