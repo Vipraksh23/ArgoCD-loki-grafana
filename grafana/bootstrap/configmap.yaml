@@ -150,7 +150,7 @@ data:
 
     echo
     echo "Members added."
-    
+
   folders.sh: |
     #!/bin/sh
 
@@ -158,15 +158,28 @@ data:
 
     AUTH="-u ${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
 
-    create_folder () {
+    create_folder() {
 
-    curl -s \
-    -X POST \
-    $AUTH \
-    -H "Content-Type: application/json" \
-    -d "{\"title\":\"$1\"}" \
-    $GRAFANA_URL/api/folders || true
+      NAME=$1
 
+      EXISTS=$(curl -s $AUTH \
+        "$GRAFANA_URL/api/folders" \
+        | jq -r ".[] | select(.title==\"$NAME\") | .uid" \
+        | head -n1)
+
+      if [ -n "$EXISTS" ]; then
+        echo "$NAME already exists."
+        return
+      fi
+
+      curl -s \
+        -X POST \
+        $AUTH \
+        -H "Content-Type: application/json" \
+        -d "{\"title\":\"$NAME\"}" \
+        "$GRAFANA_URL/api/folders"
+
+      echo
     }
 
     create_folder Development
@@ -182,48 +195,68 @@ data:
 
     AUTH="-u ${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
 
-    DEV_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders | jq -r '.[] | select(.title=="Development") | .uid')
-    OPS_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders | jq -r '.[] | select(.title=="Operations") | .uid')
+    DEV_FOLDER=$(curl -s $AUTH \
+      "$GRAFANA_URL/api/folders" \
+      | jq -r '.[] | select(.title=="Development") | .uid' \
+      | head -n1)
 
-    DEV_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=developers | jq -r '.teams[0].id')
-    OPS_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=devops | jq -r '.teams[0].id')
-    VIEW_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=viewers | jq -r '.teams[0].id')
+    OPS_FOLDER=$(curl -s $AUTH \
+      "$GRAFANA_URL/api/folders" \
+      | jq -r '.[] | select(.title=="Operations") | .uid' \
+      | head -n1)
+
+    DEV_TEAM=$(curl -s $AUTH \
+      "$GRAFANA_URL/api/teams/search?name=developers" \
+      | jq -r '.teams[0].id')
+
+    OPS_TEAM=$(curl -s $AUTH \
+      "$GRAFANA_URL/api/teams/search?name=devops" \
+      | jq -r '.teams[0].id')
+
+    VIEW_TEAM=$(curl -s $AUTH \
+      "$GRAFANA_URL/api/teams/search?name=viewers" \
+      | jq -r '.teams[0].id')
+
+    echo "Development Folder UID: $DEV_FOLDER"
+    echo "Operations Folder UID: $OPS_FOLDER"
 
     curl -s \
-    -X POST \
-    $AUTH \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"items\": [
-        {
-          \"teamId\": $DEV_TEAM,
-          \"permission\": 2
-        },
-        {
-          \"teamId\": $VIEW_TEAM,
-          \"permission\": 1
-        }
-      ]
-    }" \
-    $GRAFANA_URL/api/folders/$DEV_FOLDER/permissions
+      -X POST \
+      $AUTH \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"items\": [
+          {
+            \"teamId\": $DEV_TEAM,
+            \"permission\": 2
+          },
+          {
+            \"teamId\": $VIEW_TEAM,
+            \"permission\": 1
+          }
+        ]
+      }" \
+      "$GRAFANA_URL/api/folders/$DEV_FOLDER/permissions"
+
+    echo
 
     curl -s \
-    -X POST \
-    $AUTH \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"items\": [
-        {
-          \"teamId\": $OPS_TEAM,
-          \"permission\": 2
-        },
-        {
-          \"teamId\": $VIEW_TEAM,
-          \"permission\": 1
-        }
-      ]
-    }" \
-    $GRAFANA_URL/api/folders/$OPS_FOLDER/permissions
+      -X POST \
+      $AUTH \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"items\": [
+          {
+            \"teamId\": $OPS_TEAM,
+            \"permission\": 2
+          },
+          {
+            \"teamId\": $VIEW_TEAM,
+            \"permission\": 1
+          }
+        ]
+      }" \
+      "$GRAFANA_URL/api/folders/$OPS_FOLDER/permissions"
 
     echo
     echo "Folder permissions applied."
