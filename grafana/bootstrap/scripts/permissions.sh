@@ -4,8 +4,13 @@ set -e
 
 AUTH="-u ${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
 
-DEV_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders | jq -r '.[] | select(.title=="Development") | .uid')
-OPS_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders | jq -r '.[] | select(.title=="Operations") | .uid')
+DEV_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders \
+| jq -r '.[] | select(.title=="Development") | .uid' \
+| head -n1)
+
+OPS_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders \
+| jq -r '.[] | select(.title=="Operations") | .uid' \
+| head -n1)
 
 DEV_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=developers | jq -r '.teams[0].id')
 OPS_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=devops | jq -r '.teams[0].id')

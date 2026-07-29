@@ -14,15 +14,15 @@ TEAM=$1
 LOGIN=$2
 
 USER_ID=$(curl -s $AUTH \
-$GRAFANA_URL/api/users/lookup?loginOrEmail=$LOGIN \
+"$GRAFANA_URL/api/users/lookup?loginOrEmail=$LOGIN" \
 | jq -r '.id')
 
 curl -s \
 -X POST \
 $AUTH \
--H "Content-Type: application/json" \
--d "{\"userId\":$USER_ID}" \
-$GRAFANA_URL/api/teams/$TEAM/members || true
+-H "Content-Type: application/x-www-form-urlencoded" \
+-d "userId=$USER_ID" \
+"$GRAFANA_URL/api/teams/$TEAM/members" || true
 
 }
 
