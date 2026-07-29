@@ -21,7 +21,6 @@ spec:
             - |
               set -e
               apk add --no-cache curl jq
-              chmod +x /scripts/*.sh
               /scripts/bootstrap.sh
 
           envFrom:
