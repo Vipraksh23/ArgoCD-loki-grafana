@@ -6,7 +6,18 @@ service:
   type: ClusterIP
 
 persistence:
-  enabled: false
+  enabled: true
+  type: pvc
+
+  accessModes:
+    - ReadWriteOnce
+
+  size: 5Gi
+
+  storageClassName: standard
+
+  finalizers:
+    - kubernetes.io/pvc-protection
 
 datasources:
   datasources.yaml:
