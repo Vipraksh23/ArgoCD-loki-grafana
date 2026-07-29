@@ -8,19 +8,217 @@ metadata:
 data:
 
   bootstrap.sh: |
-    <contents of bootstrap.sh>
+    #!/bin/sh
+
+    set -e
+
+    GRAFANA_URL=http://grafana.observability.svc.cluster.local
+
+    export GRAFANA_URL
+
+    echo "Waiting for Grafana..."
+
+    until curl -s $GRAFANA_URL/api/health >/dev/null
+    do
+        echo "Grafana not ready..."
+        sleep 5
+    done
+
+    echo "Grafana is ready."
+
+    echo "==============================="
+    echo "Creating Teams..."
+    sh /scripts/teams.sh
+
+    echo "==============================="
+    echo "Creating Users..."
+    sh /scripts/users.sh
+
+    echo "==============================="
+    echo "Adding Users To Teams..."
+    sh /scripts/team-members.sh
+
+    echo "==============================="
+    echo "Creating Folders..."
+    sh /scripts/folders.sh
+
+    echo "==============================="
+    echo "Applying Permissions..."
+    sh /scripts/permissions.sh
+
+    echo
+    echo "Bootstrap completed."
 
   teams.sh: |
-    <contents of teams.sh>
+    #!/bin/sh
+
+    set -e
+
+    curl -s \
+    -X POST \
+    -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+    -H "Content-Type: application/json" \
+    -d '{"name":"developers"}' \
+    $GRAFANA_URL/api/teams || true
+
+    curl -s \
+    -X POST \
+    -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+    -H "Content-Type: application/json" \
+    -d '{"name":"devops"}' \
+    $GRAFANA_URL/api/teams || true
+
+    curl -s \
+    -X POST \
+    -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+    -H "Content-Type: application/json" \
+    -d '{"name":"viewers"}' \
+    $GRAFANA_URL/api/teams || true
+
+    echo
+    echo "Teams created."
 
   users.sh: |
-    <contents of users.sh>
+    #!/bin/sh
+
+    set -e
+
+    create_user () {
+
+    curl -s \
+    -X POST \
+    -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+    -H "Content-Type: application/json" \
+    -d "{
+    \"name\":\"$1\",
+    \"email\":\"$2\",
+    \"login\":\"$3\",
+    \"password\":\"$4\"
+    }" \
+    $GRAFANA_URL/api/admin/users || true
+
+    }
+
+    create_user dev1 dev1@example.com dev1 Dev12345!
+    create_user dev2 dev2@example.com dev2 Dev12345!
+
+    create_user ops1 ops1@example.com ops1 Dev12345!
+    create_user ops2 ops2@example.com ops2 Dev12345!
+
+    create_user viewer1 viewer1@example.com viewer1 Dev12345!
+
+    echo
+    echo "Users created."
 
   team-members.sh: |
-    <contents of team-members.sh>
+    #!/bin/sh
+
+    set -e
+
+    AUTH="-u ${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
+
+    TEAM_DEV=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=developers | jq -r '.teams[0].id')
+    TEAM_OPS=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=devops | jq -r '.teams[0].id')
+    TEAM_VIEW=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=viewers | jq -r '.teams[0].id')
+
+    add_member () {
+
+    TEAM=$1
+    USER=$2
+
+    curl -s \
+    -X POST \
+    $AUTH \
+    -H "Content-Type: application/json" \
+    -d "{\"loginOrEmail\":\"$USER\"}" \
+    $GRAFANA_URL/api/teams/$TEAM/members || true
+
+    }
+
+    add_member $TEAM_DEV dev1
+    add_member $TEAM_DEV dev2
+
+    add_member $TEAM_OPS ops1
+    add_member $TEAM_OPS ops2
+
+    add_member $TEAM_VIEW viewer1
+
+    echo
+    echo "Members added."
 
   folders.sh: |
-    <contents of folders.sh>
+    #!/bin/sh
+
+    set -e
+
+    AUTH="-u ${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
+
+    create_folder () {
+
+    curl -s \
+    -X POST \
+    $AUTH \
+    -H "Content-Type: application/json" \
+    -d "{\"title\":\"$1\"}" \
+    $GRAFANA_URL/api/folders || true
+
+    }
+
+    create_folder Development
+    create_folder Operations
+
+    echo
+    echo "Folders created."
 
   permissions.sh: |
-    <contents of permissions.sh>
+    #!/bin/sh
+
+    set -e
+
+    AUTH="-u ${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}"
+
+    DEV_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders | jq -r '.[] | select(.title=="Development") | .uid')
+    OPS_FOLDER=$(curl -s $AUTH $GRAFANA_URL/api/folders | jq -r '.[] | select(.title=="Operations") | .uid')
+
+    DEV_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=developers | jq -r '.teams[0].id')
+    OPS_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=devops | jq -r '.teams[0].id')
+    VIEW_TEAM=$(curl -s $AUTH $GRAFANA_URL/api/teams/search?name=viewers | jq -r '.teams[0].id')
+
+    curl -s \
+    -X POST \
+    $AUTH \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"items\": [
+        {
+          \"teamId\": $DEV_TEAM,
+          \"permission\": 2
+        },
+        {
+          \"teamId\": $VIEW_TEAM,
+          \"permission\": 1
+        }
+      ]
+    }" \
+    $GRAFANA_URL/api/folders/$DEV_FOLDER/permissions
+
+    curl -s \
+    -X POST \
+    $AUTH \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"items\": [
+        {
+          \"teamId\": $OPS_TEAM,
+          \"permission\": 2
+        },
+        {
+          \"teamId\": $VIEW_TEAM,
+          \"permission\": 1
+        }
+      ]
+    }" \
+    $GRAFANA_URL/api/folders/$OPS_FOLDER/permissions
+
+    echo
+    echo "Folder permissions applied."
