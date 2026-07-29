@@ -6,35 +6,35 @@ metadata:
   namespace: observability
 
 spec:
+  backoffLimit: 1
+
   template:
     spec:
       restartPolicy: Never
 
       containers:
-        - name: bootstrap
+      - name: bootstrap
 
-          image: alpine:3.20
+        image: alpine:3.20
 
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -e
-              apk add --no-cache curl jq
-              /scripts/bootstrap.sh
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          apk add --no-cache curl jq
+          /scripts/bootstrap.sh
 
-          envFrom:
-            - secretRef:
-                name: grafana-bootstrap-secret
+        envFrom:
+        - secretRef:
+            name: grafana-bootstrap-secret
 
-          volumeMounts:
-            - name: script
-              mountPath: /scripts
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
 
       volumes:
-        - name: script
-          configMap:
-            name: grafana-bootstrap-script
-            defaultMode: 0755
-
-  backoffLimit: 1
+      - name: script
+        configMap:
+          name: grafana-bootstrap-script
+          defaultMode: 0755
