@@ -11,10 +11,13 @@ persistence:
 datasources:
   datasources.yaml:
     apiVersion: 1
-
     datasources:
       - name: Loki
         type: loki
         access: proxy
-        url: http://loki:3100
+        url: http://loki-gateway.observability.svc.cluster.local
         isDefault: true
+
+grafana.ini:
+  users:
+    allow_sign_up: false
