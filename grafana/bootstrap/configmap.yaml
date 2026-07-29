@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: grafana-bootstrap-script
+  namespace: observability
+
+data:
+  bootstrap.sh: |
+    #!/bin/sh
+
+    echo "Bootstrap script placeholder"
+
+    sleep 5
+
+    echo "Done"

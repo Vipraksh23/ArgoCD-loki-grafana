@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: grafana-bootstrap
+  namespace: observability
+
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: bootstrap
+
+          image: curlimages/curl:8.8.0
+
+          command:
+            - /bin/sh
+            - /scripts/bootstrap.sh
+
+          envFrom:
+            - secretRef:
+                name: grafana-bootstrap-secret
+
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+
+      volumes:
+        - name: script
+          configMap:
+            name: grafana-bootstrap-script
+            defaultMode: 0755
+
+  backoffLimit: 1
