@@ -26,7 +26,7 @@ create_user ops2 ops2@example.com ops2 Dev12345!
 
 create_user viewer1 viewer1@example.com viewer1 Dev12345!
 
-create_user Danish danish@example.com Danish Danish123!
+create_user Netset30jul danish@example.com Netset30jul Netset30jul!
 
 echo
 echo "Users created."

@@ -34,7 +34,7 @@ add_member $TEAM_OPS ops2
 
 add_member $TEAM_VIEW viewer1
 
-add_member $TEAM_VIEW Danish
+add_member $TEAM_VIEW Netset30jul
 
 echo
 echo "Members added."
