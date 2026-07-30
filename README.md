@@ -1,16 +1,467 @@
-# Grafana Bootstrap using Kubernetes Job + ArgoCD
+# ArgoCD GitOps Observability Stack
 
-## Overview
+A complete GitOps-based Observability Platform running on Kubernetes using:
 
-This project bootstraps a fresh Grafana instance automatically after deployment.
+- ArgoCD
+- Grafana
+- Loki
+- Promtail
+- Helm Charts
+- Kubernetes Jobs
+- Kustomize
+- KIND (Local Kubernetes)
 
-Instead of manually creating users, teams, folders, and permissions through the Grafana UI, a Kubernetes Job performs all configuration using the Grafana HTTP API.
-
-The Job is managed by ArgoCD, making the entire setup GitOps-driven and reproducible.
+This repository demonstrates how to deploy an entire observability stack using GitOps principles where every Kubernetes resource is managed from Git.
 
 ---
 
-# What gets created
+# Architecture
+
+```
+                     GitHub Repository
+                             │
+                             │
+                  Watches Repository Changes
+                             │
+                             ▼
+                        ArgoCD Root App
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+   Grafana App          Loki App            Promtail App
+        │
+        ▼
+ Helm Chart Deployment
+        │
+        ▼
+ Kubernetes Resources
+        │
+        ▼
+ Grafana Bootstrap Job
+        │
+        ▼
+ Grafana HTTP API
+        │
+        ▼
+Teams • Users • Folders • Permissions
+```
+
+---
+
+# Technologies Used
+
+| Technology | Purpose |
+|------------|---------|
+| Docker | Container Runtime |
+| KIND | Local Kubernetes Cluster |
+| Kubernetes | Container Orchestration |
+| ArgoCD | GitOps Controller |
+| Helm | Package Manager for Kubernetes |
+| Kustomize | Generate ConfigMaps from scripts |
+| Grafana | Dashboard Platform |
+| Loki | Log Storage |
+| Promtail | Log Collector |
+| curl | REST API Calls |
+| jq | JSON Processing |
+
+---
+
+# Repository Structure
+
+```
+.
+├── argocd
+│   ├── apps
+│   │   ├── grafana.yaml
+│   │   ├── grafana-bootstrap.yaml
+│   │   ├── loki.yaml
+│   │   └── promtail.yaml
+│   │
+│   └── root-app.yaml
+│
+├── grafana
+│   └── bootstrap
+│       ├── bootstrap.sh
+│       ├── job.yaml
+│       ├── kustomization.yaml
+│       ├── secret.yaml
+│       └── scripts
+│           ├── teams.sh
+│           ├── users.sh
+│           ├── team-members.sh
+│           ├── folders.sh
+│           └── permissions.sh
+│
+├── helm
+│   ├── grafana
+│   │   └── values.yaml
+│   ├── loki
+│   │   └── values.yaml
+│   └── promtail
+│       └── values.yaml
+│
+├── ingress
+│   └── argocd-ingress.yaml
+│
+├── kind
+│   └── kind-config.yaml
+│
+├── namespaces
+│   ├── argocd.yaml
+│   └── observability.yaml
+│
+├── docs
+│   └── CLUSTER.md
+│
+└── README.md
+```
+
+---
+
+# Folder Explanation
+
+## argocd/
+
+Contains all ArgoCD Applications.
+
+```
+root-app.yaml
+```
+
+Root Application (App of Apps).
+
+It deploys all other applications.
+
+```
+apps/
+```
+
+Contains child applications.
+
+- Grafana
+- Loki
+- Promtail
+- Grafana Bootstrap
+
+---
+
+## helm/
+
+Contains Helm values only.
+
+These customize upstream Helm Charts.
+
+```
+helm/
+    grafana/
+        values.yaml
+```
+
+Overrides Grafana defaults.
+
+Example:
+
+- admin password
+- persistence
+- datasources
+- service
+
+Same for Loki and Promtail.
+
+---
+
+## grafana/bootstrap/
+
+Contains everything required to configure Grafana automatically.
+
+Instead of manually configuring Grafana from UI, Kubernetes runs a Job.
+
+---
+
+### bootstrap.sh
+
+Main script.
+
+Execution order
+
+```
+bootstrap.sh
+
+├── teams.sh
+├── users.sh
+├── team-members.sh
+├── folders.sh
+└── permissions.sh
+```
+
+---
+
+### scripts/
+
+Contains all Grafana API scripts.
+
+Each file performs one responsibility.
+
+| Script | Purpose |
+|---------|----------|
+| teams.sh | Create Teams |
+| users.sh | Create Users |
+| team-members.sh | Assign Users |
+| folders.sh | Create Folders |
+| permissions.sh | Apply Folder Permissions |
+
+---
+
+### job.yaml
+
+Creates Kubernetes Job.
+
+The Job
+
+- waits for Grafana
+- installs curl & jq
+- runs bootstrap.sh
+
+This Job executes after Grafana deployment using ArgoCD Hooks.
+
+---
+
+### secret.yaml
+
+Stores
+
+```
+GRAFANA_ADMIN_USER
+
+GRAFANA_ADMIN_PASSWORD
+```
+
+Injected as Environment Variables.
+
+---
+
+### kustomization.yaml
+
+Generates ConfigMap automatically.
+
+Instead of copying shell scripts into YAML manually,
+
+Kustomize packages
+
+```
+bootstrap.sh
+
+scripts/*
+```
+
+into a ConfigMap.
+
+This removes duplicate code.
+
+---
+
+# namespaces/
+
+Creates
+
+```
+argocd
+
+observability
+```
+
+Namespaces.
+
+---
+
+# ingress/
+
+Ingress configuration for ArgoCD.
+
+Allows browser access.
+
+Example
+
+```
+https://argocd.local
+```
+
+---
+
+# kind/
+
+Contains KIND cluster configuration.
+
+Defines
+
+- Cluster
+- Node mapping
+- Port mapping
+
+---
+
+# docs/
+
+Additional documentation.
+
+---
+
+# Deployment Flow
+
+```
+Git Push
+     │
+     ▼
+GitHub Repository
+     │
+     ▼
+ArgoCD Detects Change
+     │
+     ▼
+Application Sync
+     │
+     ▼
+Helm Installs Grafana
+     │
+     ▼
+Deployment Ready
+     │
+     ▼
+PostSync Hook Starts
+     │
+     ▼
+Bootstrap Job
+     │
+     ▼
+Grafana API
+     │
+     ▼
+Users
+Teams
+Folders
+Permissions
+```
+
+---
+
+# Helm Deployment
+
+Grafana, Loki and Promtail are **not** stored inside this repository.
+
+Instead,
+
+ArgoCD downloads official Helm Charts.
+
+Example
+
+```
+repoURL:
+
+https://grafana.github.io/helm-charts
+```
+
+Then
+
+```
+values.yaml
+```
+
+is applied.
+
+Result
+
+```
+Official Chart
+
++
+
+Our Custom Values
+
+=
+
+Final Kubernetes Resources
+```
+
+---
+
+# ArgoCD Applications
+
+This project contains four Applications.
+
+## Grafana
+
+Deploys Grafana using Helm.
+
+---
+
+## Loki
+
+Deploys Loki.
+
+---
+
+## Promtail
+
+Deploys Promtail.
+
+---
+
+## Grafana Bootstrap
+
+Deploys
+
+```
+Job
+
+Secret
+
+ConfigMap
+```
+
+using Kustomize.
+
+Runs only after Grafana becomes Healthy.
+
+---
+
+# Bootstrap Flow
+
+```
+Job Starts
+
+↓
+
+Wait for Grafana
+
+↓
+
+Create Teams
+
+↓
+
+Create Users
+
+↓
+
+Assign Users
+
+↓
+
+Create Folders
+
+↓
+
+Apply Permissions
+
+↓
+
+Completed
+```
+
+---
+
+# Grafana Objects Created
 
 ## Teams
 
@@ -23,7 +474,7 @@ The Job is managed by ArgoCD, making the entire setup GitOps-driven and reproduc
 ## Users
 
 | User | Team |
-|-------|------|
+|------|------|
 | dev1 | developers |
 | dev2 | developers |
 | ops1 | devops |
@@ -41,320 +492,19 @@ The Job is managed by ArgoCD, making the entire setup GitOps-driven and reproduc
 
 ## Folder Permissions
 
-### Development Folder
+Development
 
 | Team | Permission |
 |------|------------|
 | developers | Edit |
 | viewers | View |
 
----
-
-### Operations Folder
+Operations
 
 | Team | Permission |
 |------|------------|
 | devops | Edit |
 | viewers | View |
-
----
-
-# Project Structure
-
-```
-grafana/
-│
-├── bootstrap/
-│   ├── configmap.yaml
-│   ├── job.yaml
-│   └── scripts/
-│       ├── bootstrap.sh
-│       ├── teams.sh
-│       ├── users.sh
-│       ├── team-members.sh
-│       ├── folders.sh
-│       └── permissions.sh
-│
-└── kustomization.yaml
-```
-
----
-
-# Bootstrap Flow
-
-```
-Bootstrap Job
-      │
-      ▼
-Wait for Grafana API
-      │
-      ▼
-Create Teams
-      │
-      ▼
-Create Users
-      │
-      ▼
-Add Users to Teams
-      │
-      ▼
-Create Folders
-      │
-      ▼
-Assign Folder Permissions
-      │
-      ▼
-Job Completed
-```
-
----
-
-# Detailed Flow
-
-```
-                    +----------------------+
-                    | Kubernetes Job Start |
-                    +----------+-----------+
-                               |
-                               |
-                               ▼
-                Wait until Grafana is Healthy
-                               |
-                               ▼
-                 POST /api/teams
-                               |
-                               ▼
-              POST /api/admin/users
-                               |
-                               ▼
-         GET Team IDs + GET User IDs
-                               |
-                               ▼
-      POST /api/teams/{id}/members
-                               |
-                               ▼
-            POST /api/folders
-                               |
-                               ▼
-      POST /api/folders/{uid}/permissions
-                               |
-                               ▼
-                  Bootstrap Finished
-```
-
----
-
-# Scripts
-
-## bootstrap.sh
-
-Responsible for:
-
-- Waiting for Grafana
-- Executing all bootstrap scripts in order
-
-Execution order:
-
-```
-bootstrap.sh
-
-├── teams.sh
-├── users.sh
-├── team-members.sh
-├── folders.sh
-└── permissions.sh
-```
-
----
-
-## teams.sh
-
-Creates Grafana Teams.
-
-API Used
-
-```
-POST /api/teams
-```
-
-Creates
-
-- developers
-- devops
-- viewers
-
----
-
-## users.sh
-
-Creates Grafana Users.
-
-API Used
-
-```
-POST /api/admin/users
-```
-
-Creates
-
-- dev1
-- dev2
-- ops1
-- ops2
-- viewer1
-
----
-
-## team-members.sh
-
-Looks up Team IDs and User IDs before assigning users.
-
-APIs Used
-
-```
-GET /api/teams/search
-```
-
-```
-GET /api/users/lookup
-```
-
-```
-POST /api/teams/{team_id}/members
-```
-
-Example request
-
-```json
-{
-  "userId": 2
-}
-```
-
-> **Grafana 12 Change**
->
-> Grafana 12 requires the request body to be JSON:
->
-> ```json
-> {
->   "userId": 2
-> }
-> ```
->
-> Older versions accepted `application/x-www-form-urlencoded`.
-
----
-
-## folders.sh
-
-Creates folders only if they do not already exist.
-
-API
-
-```
-GET /api/folders
-```
-
-```
-POST /api/folders
-```
-
-Folders
-
-- Development
-- Operations
-
----
-
-## permissions.sh
-
-Assigns Team permissions on folders.
-
-API
-
-```
-POST /api/folders/{folder_uid}/permissions
-```
-
-Example payload
-
-```json
-{
-  "items": [
-    {
-      "teamId": 1,
-      "permission": 2
-    },
-    {
-      "teamId": 3,
-      "permission": 1
-    }
-  ]
-}
-```
-
-Permission values
-
-| Value | Meaning |
-|--------|---------|
-| 1 | View |
-| 2 | Edit |
-| 4 | Admin |
-
----
-
-# ArgoCD Deployment Flow
-
-```
-Git Push
-    │
-    ▼
-Git Repository
-    │
-    ▼
-ArgoCD detects change
-    │
-    ▼
-Sync Application
-    │
-    ▼
-Create/Update ConfigMap
-    │
-    ▼
-Create Bootstrap Job
-    │
-    ▼
-Job Executes
-    │
-    ▼
-Grafana Configured
-```
-
----
-
-# Required Environment Variables
-
-These are injected into the Job.
-
-```
-GRAFANA_ADMIN_USER
-
-GRAFANA_ADMIN_PASSWORD
-```
-
----
-
-# Idempotency
-
-The bootstrap is designed to be re-runnable.
-
-Repeated executions will:
-
-- Skip existing teams
-- Skip existing users
-- Skip existing folders
-- Reapply permissions
-- Ignore users already added to teams
 
 ---
 
@@ -364,79 +514,159 @@ Repeated executions will:
 |------|----------|
 | GET /api/health | Wait for Grafana |
 | POST /api/teams | Create Teams |
-| GET /api/teams/search | Lookup Team |
 | POST /api/admin/users | Create Users |
-| GET /api/users/lookup | Lookup User |
-| POST /api/teams/{id}/members | Add Team Members |
+| GET /api/users/lookup | User Lookup |
+| GET /api/teams/search | Team Lookup |
+| POST /api/teams/{id}/members | Assign Team Members |
 | GET /api/folders | List Folders |
 | POST /api/folders | Create Folder |
 | POST /api/folders/{uid}/permissions | Apply Permissions |
 
 ---
 
-# Example Log Output
+# GitOps Workflow
 
 ```
-Waiting for Grafana...
+Developer
 
-Grafana is ready.
+↓
 
-Creating Teams...
+Git Commit
 
-Creating Users...
+↓
 
-Adding Users To Teams...
+Git Push
 
-Creating Folders...
+↓
 
-Applying Permissions...
+GitHub
 
-Bootstrap completed.
+↓
+
+ArgoCD detects change
+
+↓
+
+Sync
+
+↓
+
+Kubernetes Updated
 ```
+
+No manual kubectl apply is required.
+
+Git becomes the single source of truth.
 
 ---
 
-# Technologies Used
+# Kustomize
 
-- Kubernetes
-- Grafana 12
+Instead of embedding shell scripts inside ConfigMap YAML,
+
+Kustomize automatically generates the ConfigMap.
+
+Example
+
+```
+configMapGenerator:
+  - name: grafana-bootstrap-script
+    files:
+      - bootstrap.sh
+      - scripts/teams.sh
+      - scripts/users.sh
+      - scripts/team-members.sh
+      - scripts/folders.sh
+      - scripts/permissions.sh
+```
+
+Advantages
+
+- No duplicated scripts
+- Easier maintenance
+- Cleaner repository
+- Git-friendly
+
+---
+
+# ArgoCD Sync
+
+Auto Sync is enabled.
+
+```
+syncPolicy:
+
+automated:
+
+prune: true
+
+selfHeal: true
+```
+
+Meaning
+
+- Automatically deploy Git changes
+- Remove deleted resources
+- Restore manually modified resources
+
+---
+
+# Idempotency
+
+Bootstrap scripts are safe to execute multiple times.
+
+They
+
+- Skip existing users
+- Skip existing teams
+- Skip existing folders
+- Reapply permissions
+
+This makes deployments repeatable.
+
+---
+
+# Local Development
+
+The project was developed using
+
+- Docker
+- KIND
+- kubectl
+- Helm
 - ArgoCD
-- GitOps
-- curl
-- jq
-- Alpine Linux
-- Shell Scripts
+
+without requiring any cloud provider.
 
 ---
 
 # Result
 
-After deployment Grafana automatically contains:
+After deployment the cluster contains
 
 ```
-Teams
- ├── developers
- ├── devops
- └── viewers
+Grafana
 
-Users
- ├── dev1
- ├── dev2
- ├── ops1
- ├── ops2
- └── viewer1
+↓
 
-Folders
- ├── Development
- └── Operations
+Loki
 
-Permissions
+↓
 
-Development
-    developers → Edit
-    viewers → View
+Promtail
 
-Operations
-    devops → Edit
-    viewers → View
+↓
+
+Bootstrap Job
+
+↓
+
+Configured Grafana
+
+├── Teams
+├── Users
+├── Folders
+└── Permissions
 ```
+
+Everything is deployed automatically from Git using ArgoCD, making the environment fully reproducible, version controlled, and GitOps compliant.
